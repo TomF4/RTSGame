@@ -2,6 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+
+/// <summary>
+/// Class to manager players stored materials
+/// </summary>
 public class ResourceManager : MonoBehaviour
 {
     private Dictionary<ResourceType, int> resources;

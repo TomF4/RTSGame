@@ -3,37 +3,68 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public abstract class WorkerBase : MonoBehaviour, IMoveable, ISelectableCharacter
+public abstract class WorkerBase : MonoBehaviour, IMoveable, ISelectable
 {
     protected NavMeshAgent agent;
     
     public int carryingCapacity;
     
-    private int carryingAmount;
+    public float gatherTime = 1.0f; 
+    public int gatherAmount = 1;
+    public float gatheringRange = 5.0f;
+    
+    [SerializeField]
+    private int currentCarryingAmount;
+    private float currentGatherTime; 
 
     private ResourceManager resourceManager;
-    private Resource targetResource;
+    private EntryPointMarker targetEntryPointMarker;
+    private IStorable targetStorage;
 
-    public int gatheringRate = 1;
-    public float gatheringRange = 443.0f;
+    protected Resource targetResource;
+    protected WorkerState currentState = WorkerState.Idle;
     
+    private static IStorable defaultStorage;
+
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        currentGatherTime = gatherTime;
+        if (defaultStorage == null)
+        {
+            SetDefaultStorage();
+        }
+        targetStorage = defaultStorage;
+        targetEntryPointMarker = targetStorage.GetClosestEntryPoint(this.transform.position);
     }
     
     private void Update()
     {
-        // Check if the worker is within range of the target resource
-        if (targetResource != null && Vector3.Distance(transform.position, targetResource.transform.position) 
-            <= gatheringRange)
+        switch (currentState)
         {
-            Debug.Log("gathering");
-            GatherResource();
+            case WorkerState.Gathering:
+                HandleGatheringBehaviour();
+                break;
+            case WorkerState.ReturningResources:
+                HandleReturningBehaviour();
+                break;
+            // ... Any other states you wish to manage.
         }
     }
 
+    public abstract void ManualMoveTo(Vector3 destination);
     public abstract void MoveTo(Vector3 destination);
+
+    private void SetDefaultStorage()
+    {
+        defaultStorage = GameManager.GetDefaultStorage();
+    }
+
+    public void AssignToStorage(IStorable storage)
+    {
+        targetStorage = storage;
+        targetEntryPointMarker = storage.GetClosestEntryPoint(this.transform.position);
+    }
 
     public void OnSelect()
     { 
@@ -46,27 +77,73 @@ public abstract class WorkerBase : MonoBehaviour, IMoveable, ISelectableCharacte
     public void AssignResource(Resource resource)
     {
         targetResource = resource;
+        currentState = WorkerState.Gathering;
         Debug.Log($"Select resource: {targetResource.name}");
+    }
+
+    private void HandleGatheringBehaviour()
+    {
+        if (targetResource != null && Vector3.Distance(transform.position, targetResource.transform.position) <= gatheringRange)
+        {
+            currentGatherTime -= Time.deltaTime;
+            
+            if (currentGatherTime <= 0)
+            {
+                GatherResource();
+                currentGatherTime = gatherTime;
+            }
+        }
+    }
+
+    private void HandleReturningBehaviour()
+    {
+        if(Vector3.Distance(transform.position, targetEntryPointMarker.transform.position) <= 5f)
+        {
+            Debug.Log("storing");
+            StoreResources();
+            Debug.Log("returning");
+            ReturnToAssignedResource();
+        }
     }
 
     private void GatherResource()
     {
-        // Logic to gather the resource over time
-        carryingAmount += Mathf.FloorToInt(Time.deltaTime * gatheringRate);
-        carryingAmount = Mathf.Min(carryingAmount, carryingCapacity);
-        
-        // If carrying capacity reached, maybe return resources
-        if (carryingAmount >= carryingCapacity)
+        // Calculate the maximum amount the worker can gather without exceeding capacity
+        int amountToGather = Mathf.Min(gatherAmount, carryingCapacity - currentCarryingAmount);
+        int actuallyGathered = targetResource.Gather(amountToGather);
+        if (actuallyGathered <= 0)
         {
-            ReturnResources();
+            targetResource = null;
+            Debug.Log("no more resources");
         }
+        currentCarryingAmount += actuallyGathered;
 
-        // Reduce quantity in targetResource
-        targetResource.Gather(gatheringRate);
+        Debug.Log("gather");
+
+
+        if (currentCarryingAmount >= carryingCapacity)
+        {
+            currentState = WorkerState.ReturningResources;
+            agent.SetDestination(targetEntryPointMarker.transform.position);
+        }
     }
 
-    private void ReturnResources()
+    private void StoreResources()
     {
-        // Logic to return resources to storage and update ResourceManager
+        targetStorage.StoreResource(targetResource.type, currentCarryingAmount);
+        currentCarryingAmount = 0;
+    }
+
+    private void ReturnToAssignedResource()
+    {
+        if(targetResource != null)
+        {
+            MoveTo(targetResource.transform.position);
+            currentState = WorkerState.Gathering;
+        }
+        else
+        {
+            currentState = WorkerState.Idle;
+        }
     }
 }

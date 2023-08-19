@@ -32,10 +32,12 @@ public class ObjectSelector : MonoBehaviour
     
     private void HandleObjectSelection()
     {
-        if (!Input.GetMouseButtonDown(0)) return;
+        if (!Input.GetMouseButtonDown(0)) 
+            return;
         
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit)) return;
+        if (!Physics.Raycast(ray, out RaycastHit hit)) 
+            return;
         
         if (selectedObject != null && hit.transform.gameObject == selectedObject) 
         {
@@ -43,6 +45,9 @@ public class ObjectSelector : MonoBehaviour
         }
         else 
         {
+            if (hit.transform.gameObject.GetComponent<ISelectable>() == null) 
+                return;
+
             SelectNewObject(hit.transform.gameObject);
         }
     }

@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class SoldierBase : MonoBehaviour, IMoveable, ISelectableCharacter
+public abstract class SoldierBase : MonoBehaviour, IMoveable, ISelectable
 {
     protected UnityEngine.AI.NavMeshAgent agent;
 
@@ -20,4 +20,7 @@ public abstract class SoldierBase : MonoBehaviour, IMoveable, ISelectableCharact
     public void OnDeselect()
     {
     }
+
+    public abstract void ManualMoveTo(Vector3 destination);
+
 }

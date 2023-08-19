@@ -9,8 +9,8 @@ public class UnitController : MonoBehaviour
     public ObjectSelector objectSelector;
     
     private Camera cam;
-    private GameObject selectedObject; // Keep track of the selected GameObject
-    private ISelectableCharacter selectedCharacter;
+    private GameObject selectedObject;
+    private ISelectable selectedCharacter;
 
     private void Start()
     {
@@ -28,7 +28,7 @@ public class UnitController : MonoBehaviour
     {
         selectedObject = objectSelector.GetSelectedObject();
 
-        ISelectableCharacter newCharacter = selectedObject?.GetComponent<ISelectableCharacter>();
+        ISelectable newCharacter = selectedObject?.GetComponent<ISelectable>();
 
         if (newCharacter != selectedCharacter)
         {
@@ -36,14 +36,6 @@ public class UnitController : MonoBehaviour
             selectedCharacter = newCharacter;
             selectedCharacter?.OnSelect();
         }
-
-        if (selectedCharacter is WorkerBase)
-        {
-            var worker = selectedObject?.GetComponent<WorkerBase>();
-            
-            // worker.AssignResource();
-        }
-
     }
 
     private void HandleAssignment()
@@ -51,6 +43,7 @@ public class UnitController : MonoBehaviour
         if (Input.GetMouseButtonDown(1))
         {
             var worker = selectedObject?.GetComponent<WorkerBase>();
+
             if (worker is null)
                 return;
                 
@@ -65,7 +58,7 @@ public class UnitController : MonoBehaviour
                 clickEffect.transform.position = hit.point;
                 clickEffect.Play();
 
-                worker.MoveTo(hit.point);
+                worker.ManualMoveTo(hit.point);
                 worker.AssignResource(hit.transform.GetComponent<Resource>());
             }
         }
@@ -83,13 +76,8 @@ public class UnitController : MonoBehaviour
                 {
                     clickEffect.transform.position = hit.point;
                     clickEffect.Play();
-                    moveable.MoveTo(hit.point);
+                    moveable.ManualMoveTo(hit.point);
                 }
-            }
-            else
-            {
-                // some logic here if the selected object is not IMoveable?
-                
             }
         }
     }
